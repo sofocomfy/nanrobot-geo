@@ -24,6 +24,19 @@ class OfflineTests(unittest.TestCase):
         with patch.dict('os.environ', {}, clear=True):
             self.assertEqual(offline.email_report({}), 'not_configured')
 
+    def test_empty_queue_cannot_hide_daily_shortfall(self):
+        now = dt.datetime.fromisoformat('2026-11-16T21:07:00+08:00')
+        r = offline.assess([], [], now)
+        self.assertEqual(r['expected_published_by_now'], 2)
+        self.assertTrue(r['daily_publication_shortfall'])
+
+    def test_morning_requires_one_not_two(self):
+        now = dt.datetime.fromisoformat('2026-11-15T09:07:00+08:00')
+        posts = [{'id':199,'date':'2026-11-15T09:00:00','link':'https://example.com/one'}]
+        r = offline.assess([], posts, now)
+        self.assertEqual(r['expected_published_by_now'], 1)
+        self.assertFalse(r['daily_publication_shortfall'])
+
 
 if __name__ == '__main__':
     unittest.main()
