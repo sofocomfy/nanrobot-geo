@@ -39,10 +39,14 @@ def assess(queue, posts, now):
                'status': 'published' if p['id'] in by_id else 'overdue_or_unavailable'} for p in due]
     local_day = now.astimezone(TZ).date().isoformat()
     today = [p for p in posts if p['date'].startswith(local_day)]
+    hour = now.astimezone(TZ).hour
+    expected = 2 if hour >= 21 else (1 if hour >= 9 else 0)
     return {'due_checks': checks, 'remaining_queued_count': len(pending),
             'queue_exhausted': not pending, 'site_date': local_day,
             'today_published_count': len(today),
             'today_urls': [p['link'] for p in today],
+            'expected_published_by_now': expected,
+            'daily_publication_shortfall': len(today) < expected,
             'daily_target': 2, 'target_is_not_guaranteed': True}
 
 
@@ -77,7 +81,7 @@ def main():
         time.sleep(5)
         queue = json.loads(Path('queue.json').read_text(encoding='utf-8'))
         report.update(assess(queue, load_posts(), now))
-        failed = any(c['status'] != 'published' for c in report['due_checks'])
+        failed = report['daily_publication_shortfall'] or any(c['status'] != 'published' for c in report['due_checks'])
     except Exception as exc:
         report['collection_error'] = type(exc).__name__
         failed = True
