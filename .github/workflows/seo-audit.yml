@@ -1,0 +1,31 @@
+name: NANROBOT SEO and GEO technical audit
+on:
+  schedule:
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['seo_audit.py', '.github/workflows/seo-audit.yml']
+permissions:
+  contents: read
+concurrency:
+  group: nanrobot-seo-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit public pages and discovery endpoints
+        run: python seo_audit.py
+      - name: Save public technical report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-seo-report
+          path: seo-report.json
+          retention-days: 30
