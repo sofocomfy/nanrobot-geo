@@ -67,12 +67,21 @@ def main():
     failed = False
     try:
         urls = [SITE + '/']
-        for pid in CORE:
-            _, _, body, _ = fetch(f'{SITE}/wp-json/wp/v2/posts/{pid}?_fields=link')
-            link = json.loads(body)['link']
-            if urlsplit(link).hostname != 'blog.nanrobot.com':
-                raise ValueError('Unexpected post host')
-            urls.append(link)
+        page = 1
+        while True:
+            _, _, body, _ = fetch(f'{SITE}/wp-json/wp/v2/posts?per_page=100&page={page}&_fields=link')
+            batch = json.loads(body)
+            for post in batch:
+                link = post['link']
+                if urlsplit(link).hostname != 'blog.nanrobot.com':
+                    raise ValueError('Unexpected post host')
+                urls.append(link)
+            if len(batch) < 100:
+                break
+            page += 1
+            if page > 50:
+                raise ValueError('Pagination safety limit exceeded')
+        report['checked_page_count'] = len(urls)
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
             report['pages'] = list(pool.map(check, urls))
         report['discovery'] = []
